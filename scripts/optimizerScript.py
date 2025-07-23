@@ -134,6 +134,7 @@ if __name__ == "__main__":
     else:
         METADATA_DF = pd.DataFrame(columns=[
             "fileTimestamp",
+            "taskName",
             "useAdjoint",
             "dataSteps",
             "batchSize",
@@ -145,10 +146,11 @@ if __name__ == "__main__":
             "trueCoefficientMatrix"
         ])
 
-    def addRowAndSaveMetadataDf(fileTimestamp: str, optimizerClass: Type[optim.Optimizer], y0: torch.Tensor, trueCoefficientMatrix: torch.Tensor):
+    def addRowAndSaveMetadataDf(fileTimestamp: str, taskName: str, optimizerClass: Type[optim.Optimizer], y0: torch.Tensor, trueCoefficientMatrix: torch.Tensor):
         global METADATA_DF
         METADATA_DF = pd.concat([METADATA_DF, pd.DataFrame([[
             fileTimestamp,
+            taskName,
             USE_ADJOINT,
             DATA_STEPS,
             BATCH_SIZE,
@@ -163,6 +165,7 @@ if __name__ == "__main__":
 
     OPTIMIZER_LIST = [optim.RMSprop, optim.Adam, optim.AdamW, optim.SGD]
 
+    taskName = "Original"
     for repeat in range(10):
         for optimizer in tqdm(OPTIMIZER_LIST, desc=f"Original Example Exponent Count Loop (Repeat: {repeat})"):
             dimension = 2
@@ -175,8 +178,9 @@ if __name__ == "__main__":
             df = performOptimizerExperiment(optimizer, y0, trueCoefficientMatrix)
             fileTimestamp = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
             df.to_pickle(os.path.join(SAVED_DATA_PATH, fileTimestamp+".pkl"))
-            addRowAndSaveMetadataDf(fileTimestamp, optimizer, y0.cpu(), trueCoefficientMatrix.cpu())
+            addRowAndSaveMetadataDf(fileTimestamp, taskName, optimizer, y0.cpu(), trueCoefficientMatrix.cpu())
 
+    taskName = "10-Dimensional"
     for repeat in range(10):     
         for optimizer in tqdm(OPTIMIZER_LIST, desc=f"10-Dimensional (Repeat: {repeat})"):
             dimension = 10
@@ -190,8 +194,9 @@ if __name__ == "__main__":
             df = performOptimizerExperiment(optimizer, y0, trueCoefficientMatrix)
             fileTimestamp = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
             df.to_pickle(os.path.join(SAVED_DATA_PATH, fileTimestamp+".pkl"))
-            addRowAndSaveMetadataDf(fileTimestamp, optimizer, y0.cpu(), trueCoefficientMatrix.cpu())
+            addRowAndSaveMetadataDf(fileTimestamp, taskName, optimizer, y0.cpu(), trueCoefficientMatrix.cpu())
             
+    taskName = "100-Dimensional"
     for repeat in range(10):     
         for optimizer in tqdm(OPTIMIZER_LIST, desc=f"100-Dimensional (Repeat: {repeat})"):
             dimension = 100
@@ -205,5 +210,5 @@ if __name__ == "__main__":
             df = performOptimizerExperiment(optimizer, y0, trueCoefficientMatrix)
             fileTimestamp = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
             df.to_pickle(os.path.join(SAVED_DATA_PATH, fileTimestamp+".pkl"))
-            addRowAndSaveMetadataDf(fileTimestamp, optimizer, y0.cpu(), trueCoefficientMatrix.cpu())
+            addRowAndSaveMetadataDf(fileTimestamp, taskName, optimizer, y0.cpu(), trueCoefficientMatrix.cpu())
             
