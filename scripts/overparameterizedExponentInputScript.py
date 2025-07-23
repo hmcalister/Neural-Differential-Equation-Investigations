@@ -20,7 +20,7 @@ USE_ADJOINT = True
 DATA_STEPS = 1000   
 BATCH_SIZE = 20   
 BATCH_TIME = 10   
-NUM_EPOCHS = 20 
+NUM_EPOCHS = 2000 
 TEST_FREQUENCY = 10
 HIDDEN_LAYER_SIZE = 50
 
@@ -102,7 +102,7 @@ def performExponentExperiment(exponentCount: int, y0: torch.Tensor, trueCoeffici
     func = ExponentODEFunc(DIMENSION, exponentCount).to(TORCH_DEVICE)
     optimizer = optim.RMSprop(func.parameters(), lr=1e-3) # pyright: ignore[reportPrivateImportUsage]
 
-    for epoch in tqdm(range(1, NUM_EPOCHS + 1), desc="Epoch", leave=False):
+    for epoch in tqdm(range(1,NUM_EPOCHS+1), desc="Epoch", leave=False):
         optimizer.zero_grad()
         batch_y0, batch_t, batch_y = get_batch(t, true_y)
         pred_y: torch.Tensor = odeint(func, batch_y0, batch_t).to(TORCH_DEVICE) # type: ignore
@@ -115,7 +115,6 @@ def performExponentExperiment(exponentCount: int, y0: torch.Tensor, trueCoeffici
                 pred_y: torch.Tensor = odeint(func, y0, t) # type: ignore
                 loss = torch.mean(torch.abs(pred_y - true_y))
                 predCoefficientMatrix: torch.Tensor = func.net(torch.eye(DIMENSION*exponentCount).to(TORCH_DEVICE))
-                
                 testRow = {
                     "epoch": epoch,
                     "time": time.time_ns(),
@@ -132,7 +131,7 @@ if __name__ == "__main__":
         METADATA_DF = pd.read_pickle(metadataDfFilepath)
     else:
         METADATA_DF = pd.DataFrame(columns=[
-            "fileTimestamp"
+            "fileTimestamp",
             "useAdjoint",
             "dataSteps",
             "batchSize",
@@ -144,18 +143,10 @@ if __name__ == "__main__":
             "trueCoefficientMatrix"
         ])
 
-    for exponentCount in tqdm(range(3,10), desc="Original Example Exponent Count Loop"):
-        dimension = 2
-        y0 = torch.tensor([[2., 0.]]).to(TORCH_DEVICE)
-        trueCoefficientMatrix = torch.zeros(size=(dimension*exponentCount, dimension)).to(TORCH_DEVICE)
-        trueCoefficientMatrix[4,:] = torch.tensor([-0.1, 2.0])
-        trueCoefficientMatrix[5,:] = torch.tensor([-2.0, -0.1])
-
-        df = performExponentExperiment(exponentCount, y0, trueCoefficientMatrix)
-        timestamp = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
-        df.to_pickle(os.path.join(SAVED_DATA_PATH, timestamp+".pkl"))
+    def addRowAndSaveMetadataDf(fileTimestamp: str, exponentCount: int, y0: torch.Tensor, trueCoefficientMatrix: torch.Tensor):
+        global METADATA_DF
         METADATA_DF = pd.concat([METADATA_DF, pd.DataFrame([[
-            timestamp,
+            fileTimestamp,
             USE_ADJOINT,
             DATA_STEPS,
             BATCH_SIZE,
@@ -167,3 +158,50 @@ if __name__ == "__main__":
             trueCoefficientMatrix.cpu(),
         ]], columns=METADATA_DF.columns)])
         METADATA_DF.to_pickle(metadataDfFilepath)
+
+
+    for repeat in range(10):
+        for exponentCount in tqdm(range(3,10), desc=f"Original Example Exponent Count Loop (Repeat: {repeat})"):
+            dimension = 2
+            y0 = torch.tensor([[2., 0.]]).to(TORCH_DEVICE)
+            trueCoefficientMatrix = torch.zeros(size=(dimension*exponentCount, dimension)).to(TORCH_DEVICE)
+            trueCoefficientMatrix[4,:] = torch.tensor([-0.1, 2.0])
+            trueCoefficientMatrix[5,:] = torch.tensor([-2.0, -0.1])
+
+            df = performExponentExperiment(exponentCount, y0, trueCoefficientMatrix)
+            fileTimestamp = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+            df.to_pickle(os.path.join(SAVED_DATA_PATH, fileTimestamp+".pkl"))
+            addRowAndSaveMetadataDf(fileTimestamp, exponentCount, y0.cpu(), trueCoefficientMatrix.cpu())
+
+    for repeat in range(10):     
+        for exponentCount in tqdm(range(1,10), desc=f"10-Dimensional (Repeat: {repeat})"):
+            dimension = 10
+            y0 = torch.normal(mean=torch.zeros((1, dimension)), std=torch.ones((1, dimension))).to(TORCH_DEVICE)
+            trueCoefficientMatrix = torch.zeros(size=(dimension*exponentCount, dimension)).to(TORCH_DEVICE)
+            # In theory this should be a stable system? Each variable is negatively associated with all others dy/dt = -Ay for some A...
+            trueCoefficientMatrix[:dimension, :] = -torch.rand((dimension, dimension))
+            trueCoefficientMatrix.fill_diagonal_(0.0)
+
+            # block = torch.tensor([[0, -1],[-1, 0]])
+            # for d in range(dimension//2):
+            #     trueCoefficientMatrix[2*d:2*d+2, 2*d:2*d+2] = block
+
+            df = performExponentExperiment(exponentCount, y0, trueCoefficientMatrix)
+            fileTimestamp = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+            df.to_pickle(os.path.join(SAVED_DATA_PATH, fileTimestamp+".pkl"))
+            addRowAndSaveMetadataDf(fileTimestamp, exponentCount, y0.cpu(), trueCoefficientMatrix.cpu())
+            
+    for repeat in range(10):     
+        for exponentCount in tqdm(range(1,10), desc=f"100-Dimensional (Repeat: {repeat})"):
+            dimension = 100
+            y0 = torch.normal(mean=torch.zeros((1, dimension)), std=torch.ones((1, dimension))).to(TORCH_DEVICE)
+            trueCoefficientMatrix = torch.zeros(size=(dimension*exponentCount, dimension)).to(TORCH_DEVICE)
+            # In theory this should be a stable system? Each variable is negatively associated with all others dy/dt = -Ay for some A...
+            trueCoefficientMatrix[:dimension, :] = -torch.rand((dimension, dimension))
+            trueCoefficientMatrix.fill_diagonal_(0.0)
+
+            df = performExponentExperiment(exponentCount, y0, trueCoefficientMatrix)
+            fileTimestamp = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
+            df.to_pickle(os.path.join(SAVED_DATA_PATH, fileTimestamp+".pkl"))
+            addRowAndSaveMetadataDf(fileTimestamp, exponentCount, y0.cpu(), trueCoefficientMatrix.cpu())
+            
