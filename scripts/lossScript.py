@@ -196,7 +196,10 @@ if __name__ == "__main__":
             trueCoefficientMatrix[:dimension, :] = -torch.rand((dimension, dimension))
             trueCoefficientMatrix.fill_diagonal_(0.0)
 
-            df = performLossExperiment(lossStr, y0, trueCoefficientMatrix)
+            try:
+                df = performLossExperiment(lossStr, y0, trueCoefficientMatrix)
+            except AssertionError:
+                continue
             fileTimestamp = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
             df.to_pickle(os.path.join(SAVED_DATA_PATH, fileTimestamp+".pkl"))
             addRowAndSaveMetadataDf(fileTimestamp, taskName, lossStr, y0.cpu(), trueCoefficientMatrix.cpu())
@@ -211,8 +214,11 @@ if __name__ == "__main__":
             # In theory this should be a stable system? Each variable is negatively associated with all others dy/dt = -Ay for some A...
             trueCoefficientMatrix[:dimension, :] = -torch.rand((dimension, dimension))
             trueCoefficientMatrix.fill_diagonal_(0.0)
-
-            df = performLossExperiment(lossStr, y0, trueCoefficientMatrix)
+            
+            try:
+                df = performLossExperiment(lossStr, y0, trueCoefficientMatrix)
+            except AssertionError:
+                continue
             fileTimestamp = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
             df.to_pickle(os.path.join(SAVED_DATA_PATH, fileTimestamp+".pkl"))
             addRowAndSaveMetadataDf(fileTimestamp, taskName, lossStr, y0.cpu(), trueCoefficientMatrix.cpu())
